@@ -1,20 +1,25 @@
 #include <iostream>
+#include "utilites.h"
 #include "layer.h"
 using namespace std;
 
 int main() {
-//	vector<vector<float>> training_set_inputs{ { 1,0,0,0}, {0,1,0,0},{0,0,1,0},{0,0,0,1},{1,0,0,1},{0,1,1,0},{0,0,1,1},{1,1,0,0},{1,1,1,1} };
-//	vector<vector<float>> training_set_outputs{ { 1,0,0,0}, {0,1,0,0},{0,0,1,0},{0,0,0,1},{1,0,0,1},{0,1,1,0},{0,0,1,1},{1,1,0,0},{1,1,1,1} };
-	vector<vector<float>> training_set_inputs{ {1,1,1,1} };
-	vector<vector<float>> training_set_outputs{ {1,1,1,1} };
+	vector<vector<float>> training_set_inputs{ { 1,0,0}, {0,1,0},{0,0,1},{0,0,0} };
+	vector<vector<float>> training_set_outputs{ { 1,0,0}, {0,1,0},{0,0,1},{0,0,0} };
+	//vector<vector<float>> training_set_inputs{ {1,1,1,1} };
+	//vector<vector<float>> training_set_outputs{ {1,1,1,1} };
 
-	int inputs = 4;
+	random randint;
+
+	int inputs = 3;
 	int epoches;
 	cout << "Epoches: ";
 	cin >> epoches;
 
-	network model = network(4);
+	network model = network(inputs);
 	model.add(16, "sigmoid");
+	//model.add(32, "softmax");
+	//model.add(16, "relu");
 	model.add(4, "sigmoid");
 	model.complite();
 
