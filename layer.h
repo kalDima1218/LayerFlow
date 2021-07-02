@@ -42,8 +42,8 @@ private:
 public:
 	bool hiden_law;
 	bool output_law;
-	Law(int input, int neurons_local, bool is_out, bool is_in, bool is_h, string activation_local, int neurons_forward_local, int name, float l_r) {
-		classic_activation = activation_local;
+	Law(int input, int neurons_local, bool is_out, bool is_in, bool is_h, vector<string> activation_local, int neurons_forward_local, int name, float l_r) {
+		activation = activation_local;
 		inputs = input;
 		neurons = neurons_local;
 		output_law = is_out;
@@ -69,13 +69,6 @@ public:
 	vector<float> get_output() {
 		return output;
 	}
-	void cout_W(int neuron) {
-		cout << "Neuron " << neuron + 1 << " of lawer " << law_name << ": ";
-		for (int i = 0; i < inputs; i++) {
-			cout << W[neuron][i] << " ";
-		}
-		cout << endl << endl;
-	}
 	void forward(vector<float> derivatives, vector<vector<float>> w_local, int neuron) {
 		neurons_forward = neuron;
 		related_forward = w_local;
@@ -89,7 +82,6 @@ public:
 		vector<float> local_W;
 		for (int l = 0; l < neurons; l++) {
 			if (regenerating == false) {
-				activation.push_back(classic_activation);
 			}
 			for (int i = 0; i < inputs; i++)
 			{
@@ -128,6 +120,14 @@ public:
 				if (activation[i] == "sigmoid") {
 					derivatives.push_back(output[i] * (1 - output[i]) * error[i]);
 				}
+				else if (activation[i] == "relu") {
+					if (output[i] < 0) {
+						derivatives.push_back(0.1);
+					}
+					else {
+						derivatives.push_back(1);
+					}
+				}
 				else {
 					derivatives.push_back(0);
 				}
@@ -140,7 +140,7 @@ public:
 				}
 				else if (activation[i] == "relu") {
 					if (output[i] < 0) {
-						derivatives.push_back(0);
+						derivatives.push_back(0.1);
 					}
 					else {
 						derivatives.push_back(calc_forward_derivatives(i));
@@ -253,7 +253,7 @@ private:
 	int count_layes;
 	int inputs;
 	float former_val_W = 0.1;
-	vector<float> error;
+	vector<vector<float>> error;
 	vector<float> output;
 	float former_error = 0;
 public:
@@ -261,7 +261,21 @@ public:
 		inputs = input_local;
 		count_layes = 0;
 	}
-	void add(int neurons, string activation) {
+	void add(int neurons, string local_activation) {
+		count_layes += 1;
+		vector<string> activation;
+		for (int i = 0; i < neurons; i++) {
+			activation.push_back(local_activation);
+		}
+		if (count_layes == 1) {
+			layes.push_back(Law(inputs, neurons, false, true, false, activation, 0, count_layes, 1));
+		}
+		else {
+			layes[count_layes - 2].set_forward(neurons);
+			layes.push_back(Law(layes[count_layes - 2].get_neurons(), neurons, false, false, true, activation, 0, count_layes, 1));
+		}
+	}
+	void add_extended(int neurons, vector<string> activation) {
 		count_layes += 1;
 		if (count_layes == 1) {
 			layes.push_back(Law(inputs, neurons, false, true, false, activation, 0, count_layes, 1));
@@ -285,20 +299,27 @@ public:
 			layes[i].generate_weights(true);
 		}
 	}
-	float find_error(vector<vector<float>> inputs,vector<vector<float>>answears,vector<Law> testing_layes,int count_output) {
-		float c_error = 0;
-		vector<vector<float>> outputing;
+	vector<float> find_error_with_input(vector<float> inputs, vector<float>answears, vector<Law> testing_layes, int count_output) {
+		vector<float> c_error;
+		vector<float> outputing;
 		for (int l = 0; l < inputs.size(); l++) {
-			outputing.push_back(think(inputs[l], testing_layes, 0, false));
+			outputing = think(inputs, testing_layes, 0, false);
 		}
 		for (int k = 0; k < count_output; k++) {
-			for (int l = 0; l < answears.size(); l++) {
-				if (-(answears[l][k] - outputing[l][k]) > (answears[l][k] - outputing[l][k])) {
-					c_error += -(answears[l][k] - outputing[l][k]);
-				}
-				else {
-					c_error += (answears[l][k] - outputing[l][k]);
-				}
+			if (-(answears[k] - outputing[k]) > (answears[k] - outputing[k])) {
+				c_error.push_back(-(answears[k] - outputing[k]));
+			}
+			else {
+				c_error.push_back((answears[k] - outputing[k]));
+			}
+		}
+		return c_error;
+	}
+	float find_error_with_error(vector<vector<float>> error_local, int count_output) {
+		float c_error = 0;
+		for (int k = 0; k < error_local.size(); k++) {
+			for (int l = 0; l < count_output; l++) {
+				c_error += error_local[k][l];
 			}
 		}
 		return c_error;
@@ -340,59 +361,43 @@ public:
 		}
 		return res;
 	}
-	void train(vector<vector<float>> input_local, vector<vector<float>> answears, int dropout, int epoches, bool gan) {
+	void train(vector<vector<float>> input_local, vector<vector<float>> answears, int dropout, int epoches, bool gen) {
 		former_val_W = complexy();
-		if (gan == false) {
+		float val_error = 0;
+		if (gen == false) {
 			for (int i = 1; i <= epoches; i++) {
-				cout << endl << "Epoch: " << i << endl;
-				float val_error = 0;
-				for (int l = 0; l < input_local.size(); l++) {
-					output = think(input_local[l], layes, dropout, false);
-					for (int k = 0; k < layes[count_layes - 1].get_neurons(); k++) {
-						error.push_back(answears[l][k] - output[k]);
-						if (error[k] > 0) {
-							val_error += error[k];
-						}
-						else {
-							val_error -= error[k];
-						}
-					}
-
-					for (int k = count_layes - 2; k >= 0; k--) {
-						layes[k].forward(layes[k + 1].get_delta(error), layes[k + 1].get_W(), layes[k + 1].get_neurons());
-					}
-
-					for (int k = count_layes - 1; k >= 0; k--) {
-						if (k == 0) {
-							layes[k].train(input_local[l], error);
-						}
-						else {
-							layes[k].train(layes[k - 1].get_output(), error);
-						}
-					}
-					error.clear();
-					if (val_error == 0) {
-						dropout += 5;
-						cout << endl << "Increased dropout" << endl;
-					}
-					else if (val_error > 5 || val_error < 0.001 && dropout != 0) {
-						dropout -= 5;
-						cout << endl << "Reducing dropout" << endl;
-					}
+				for (int l = 0; l < answears.size(); l++) {
+					error.push_back(find_error_with_input(input_local[l], answears[l], layes, layes[count_layes-1].get_neurons()));
 				}
-				if (i % 100 == 0) {
-					float val_W = complexy();
-					cout << endl << "Computational complexity on epoch " << i << ": " << val_W << ". That more than former in : " << ((val_W / former_val_W) - 1) * 100 << "%" << endl;
+
+				vector<vector<vector<float>>> error_local;
+				error_local.push_back(error);
+				val_error = classic_train(input_local, error_local,dropout,i,gen);
+
+				error_local.clear();
+				error.clear();
+
+				if (val_error == 0) {
+					dropout += 5;
+					cout << endl << "Increased dropout" << endl;
 				}
-				cout << "Error: " << val_error / input_local.size() << endl;
+				else if (val_error > 5 || val_error < 0.001 && dropout != 0) {
+					dropout -= 5;
+					cout << endl << "Reducing dropout" << endl;
+				}
 			}
 		}
 		else {
 			for (int i = 1; i <= epoches; i++) {
 				cout << endl << "Epoch: " << i << endl;
 				int generations = 100;
-
-				vector<float> val_error;
+				vector<vector<vector<float>>> error_local;
+				vector<vector<float>> error_local_local;
+				for (int l = 0; l < answears.size(); l++) {
+					error_local_local.push_back(find_error_with_input(input_local[l],answears[l],layes, layes[count_layes - 1].get_neurons()));
+				}
+				error_local.push_back(error_local_local);
+				error_local_local.clear();
 				vector<vector<Law>>gen_layes;
 
 				for (int p = 0; p < generations; p++) {
@@ -404,54 +409,97 @@ public:
 						gen_layes[p][k].correct_weights();
 					}
 				}//Создание мутаций в копиях
-
 				for (int k = 0; k < generations; k++) {
-					val_error.push_back(0);
-					vector<float> val_error_local;
 					for (int l = 0; l < answears.size(); l++) {
-						val_error_local.push_back(find_error(input_local, answears, gen_layes[k], layes[count_layes - 1].get_neurons()));
+						error_local_local.push_back(find_error_with_input(input_local[l], answears[l], gen_layes[k], layes[count_layes - 1].get_neurons()));
 					}
-					for (int p = 0; p < answears.size(); p++) {
-						val_error[k] += val_error_local[p];
-					}
-					val_error_local.clear();
+					error_local.push_back(error_local_local);
+					error_local_local.clear();
 				}//Тестирование копий и нахождение ошибки у них
-
-				float min_error;
-				if (-val_error[0] > val_error[0]) {
-					min_error = -val_error[0];
-				}
-				else {
-					min_error = val_error[0];
-				}//За минимальную ошибку по умолчанию берётся первое значение в векторе
-
-				int index = 0;
-				for (int p = 1; p < generations; p++) {
-					if (min_error > val_error[p]) {
-						min_error = val_error[p];
-						index = p;
-					}
-				}//Нахождение лучшей копии
-
-				float current_error = find_error(input_local, answears, layes, layes[count_layes - 1].get_neurons());//Тестирование основной модели и нахождение у неё ошибки
-
-				if (min_error < current_error) {
-					layes = gen_layes[index];
-					cout << "Good generation. Min error: " << min_error << " current error: " << current_error << endl;
-				}
-				else if (min_error > current_error) {
-					cout << "Bad generation. Min error: " << min_error << " current error: " << current_error << endl;
-					min_error = current_error;
-				}
-				cout << "Total error: " << min_error << endl;
-
-				if (i % 100 == 0) {
-					float val_W = complexy();
-					cout << endl << "Computational complexity on epoch " << i << ": " << val_W << ". That more than former in : " << ((val_W / former_val_W) - 1) * 100 << "%" << endl;
-				}
-				val_error.clear();
-				gen_layes.clear();
+				gen_train(gen_layes, error_local, i);
 			}
 		}
+	}
+	float classic_train(vector<vector<float>> input_local, vector<vector<vector<float>>> error_local, int dropout, int epoch, bool gen) {
+		cout << endl << "Epoch: " << epoch << endl;
+		float val_error = 0;
+		for (int l = 0; l < input_local.size(); l++) {
+			error = error_local[0];
+
+			for (int k = count_layes - 2; k >= 0; k--) {
+				layes[k].forward(layes[k + 1].get_delta(error[l]), layes[k + 1].get_W(), layes[k + 1].get_neurons());
+			}
+
+			for (int k = count_layes - 1; k >= 0; k--) {
+				if (k == 0) {
+					layes[k].train(input_local[l], error[l]);
+				}
+				else {
+					layes[k].train(layes[k - 1].get_output(), error[l]);
+				}
+			}
+			error.clear();
+			if (val_error == 0) {
+				dropout += 5;
+				cout << endl << "Increased dropout" << endl;
+			}
+			else if (val_error > 5 || val_error < 0.001 && dropout != 0) {
+				dropout -= 5;
+				cout << endl << "Reducing dropout" << endl;
+			}
+		}
+		return val_error;
+		if (epoch % 100 == 0) {
+			float val_W = complexy();
+			cout << endl << "Computational complexity on epoch " << epoch << ": " << val_W << ". That more than former in : " << ((val_W / former_val_W) - 1) * 100 << "%" << endl;
+		}
+		cout << "Error: " << val_error / input_local.size() << endl;
+	}
+	void gen_train(vector<vector<Law>>input_gen, vector<vector<vector<float>>>error_local,int epoch) {
+		cout << endl << "Epoch: " << epoch << endl;
+		int generations = 100;
+
+		vector<float> val_error;
+		vector<vector<Law>>gen_layes = input_gen;
+
+		for (int k = 1; k < (generations + 1); k++) {
+			val_error.push_back(find_error_with_error(error_local[k], layes[count_layes - 1].get_neurons()));
+		}//Нахождение у них ошибки
+
+		float min_error;
+		if (-val_error[0] > val_error[0]) {
+			min_error = -val_error[0];
+		}
+		else {
+			min_error = val_error[0];
+		}//За минимальную ошибку по умолчанию берётся первое значение в векторе
+
+		int index = 0;
+		for (int p = 1; p < generations; p++) {
+			if (min_error > val_error[p]) {
+				min_error = val_error[p];
+				index = p;
+			}
+		}//Нахождение лучшей копии
+
+		float current_error = find_error_with_error(error_local[0], layes[count_layes - 1].get_neurons());//Тестирование основной модели и нахождение у неё ошибки
+
+		if (min_error < current_error) {
+			layes = gen_layes[index];
+			cout << "Good generation. Min error: " << min_error << " current error: " << current_error << endl;
+		}
+		else if (min_error > current_error) {
+			cout << "Bad generation. Min error: " << min_error << " current error: " << current_error << endl;
+			min_error = current_error;
+		}
+
+		cout << "Total error: " << min_error << endl;
+
+		if (epoch % 100 == 0) {
+			float val_W = complexy();
+			cout << endl << "Computational complexity on epoch " << epoch << ": " << val_W << ". That more than former in : " << ((val_W / former_val_W) - 1) * 100 << "%" << endl;
+		}
+		val_error.clear();
+		gen_layes.clear();
 	}
 };

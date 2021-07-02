@@ -15,7 +15,7 @@ int main() {
 	cin >> epoches;
 
 	network model = network(4);
-	//model.add(16, "relu");
+	model.add(16, "sigmoid");
 	model.add(4, "sigmoid");
 	model.complite();
 
