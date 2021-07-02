@@ -1,5 +1,4 @@
 #include <iostream>
-#include <cmath>
 #include "layer.h"
 using namespace std;
 
@@ -19,7 +18,7 @@ int main() {
 	model.add(4, "sigmoid");
 	model.complite();
 
-	model.train(training_set_inputs, training_set_outputs,15, epoches,true);//input,output,dropout,epoches
+	model.train(training_set_inputs, training_set_outputs,15, epoches,false);//input,output,dropout,epoches
 	cout << "Ready" << endl;
 	while (true) {
 		vector<float> input;

@@ -291,7 +291,7 @@ public:
 	}
 	void predict(vector<float> input) {
 		for (int i = 0; i < layes[count_layes - 1].get_neurons(); i++) {
-			cout << think(input, layes, 0, true)[i] << endl;
+			cout << think(input, layes, 0, true,false)[i] << endl;
 		}
 	}
 	void generating_weight() {
@@ -299,11 +299,11 @@ public:
 			layes[i].generate_weights(true);
 		}
 	}
-	vector<float> find_error_with_input(vector<float> inputs, vector<float>answears, vector<Law> testing_layes, int count_output) {
+	vector<float> find_error_with_input(vector<float> inputs, vector<float>answears, vector<Law> testing_layes, int count_output,bool save_layes) {
 		vector<float> c_error;
 		vector<float> outputing;
 		for (int l = 0; l < inputs.size(); l++) {
-			outputing = think(inputs, testing_layes, 0, false);
+			outputing = think(inputs, testing_layes, 0, false, save_layes);
 		}
 		for (int k = 0; k < count_output; k++) {
 			if (-(answears[k] - outputing[k]) > (answears[k] - outputing[k])) {
@@ -343,7 +343,7 @@ public:
 		former_val_W = val_W;
 		return val_W;
 	}
-	vector<float> think(vector<float> inputs, vector<Law>testing_layes, int dropout, bool test) {
+	vector<float> think(vector<float> inputs, vector<Law>testing_layes, int dropout, bool test,bool save_layes) {
 		vector<float> res;
 		vector<float> old_res;
 		for (int i = 0; i < testing_layes.size(); i++) {
@@ -359,6 +359,9 @@ public:
 				res = testing_layes[i].think(old_res, dropout, test);
 			}
 		}
+		if (save_layes == true) {
+			layes = testing_layes;
+		}
 		return res;
 	}
 	void train(vector<vector<float>> input_local, vector<vector<float>> answears, int dropout, int epoches, bool gen) {
@@ -367,7 +370,7 @@ public:
 		if (gen == false) {
 			for (int i = 1; i <= epoches; i++) {
 				for (int l = 0; l < answears.size(); l++) {
-					error.push_back(find_error_with_input(input_local[l], answears[l], layes, layes[count_layes-1].get_neurons()));
+					error.push_back(find_error_with_input(input_local[l], answears[l], layes, layes[count_layes-1].get_neurons(),true));
 				}
 
 				vector<vector<vector<float>>> error_local;
@@ -379,11 +382,11 @@ public:
 
 				if (val_error == 0) {
 					dropout += 5;
-					cout << endl << "Increased dropout" << endl;
+					cout << "Increased dropout" << endl;
 				}
 				else if (val_error > 5 || val_error < 0.001 && dropout != 0) {
 					dropout -= 5;
-					cout << endl << "Reducing dropout" << endl;
+					cout << "Reducing dropout" << endl;
 				}
 			}
 		}
@@ -394,7 +397,7 @@ public:
 				vector<vector<vector<float>>> error_local;
 				vector<vector<float>> error_local_local;
 				for (int l = 0; l < answears.size(); l++) {
-					error_local_local.push_back(find_error_with_input(input_local[l],answears[l],layes, layes[count_layes - 1].get_neurons()));
+					error_local_local.push_back(find_error_with_input(input_local[l],answears[l],layes, layes[count_layes - 1].get_neurons(),false));
 				}
 				error_local.push_back(error_local_local);
 				error_local_local.clear();
@@ -411,7 +414,7 @@ public:
 				}//Создание мутаций в копиях
 				for (int k = 0; k < generations; k++) {
 					for (int l = 0; l < answears.size(); l++) {
-						error_local_local.push_back(find_error_with_input(input_local[l], answears[l], gen_layes[k], layes[count_layes - 1].get_neurons()));
+						error_local_local.push_back(find_error_with_input(input_local[l], answears[l], gen_layes[k], layes[count_layes - 1].get_neurons(),false));
 					}
 					error_local.push_back(error_local_local);
 					error_local_local.clear();
@@ -439,21 +442,13 @@ public:
 				}
 			}
 			error.clear();
-			if (val_error == 0) {
-				dropout += 5;
-				cout << endl << "Increased dropout" << endl;
-			}
-			else if (val_error > 5 || val_error < 0.001 && dropout != 0) {
-				dropout -= 5;
-				cout << endl << "Reducing dropout" << endl;
-			}
 		}
-		return val_error;
 		if (epoch % 100 == 0) {
 			float val_W = complexy();
 			cout << endl << "Computational complexity on epoch " << epoch << ": " << val_W << ". That more than former in : " << ((val_W / former_val_W) - 1) * 100 << "%" << endl;
 		}
 		cout << "Error: " << val_error / input_local.size() << endl;
+		return val_error;
 	}
 	void gen_train(vector<vector<Law>>input_gen, vector<vector<vector<float>>>error_local,int epoch) {
 		cout << endl << "Epoch: " << epoch << endl;
