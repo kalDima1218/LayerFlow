@@ -1,10 +1,30 @@
-﻿#include <cmath>
+﻿/*  LayerFlow lib. Neural network library for creating, training and testing models.
+    Copyright © 2020 Dmitry Kalugin
+
+    LayerFlow lib is free software; you can redistribute it and/or
+    modify it under the terms of the GNU Lesser General Public
+    License as published by the Free Software Foundation; either
+    version 2.1 of the License, or (at your option) any later version.
+
+    LayerFlow lib is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+    Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public
+    License along with this library; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
+    USA
+
+Email to contact: kalugin180806@gmail.com*/
+#include <cmath>
 #include <iostream>
-using namespace std;
 #include <vector>
 #include <ctime>
 #include <algorithm>
-//#include <thread>
+
+using namespace std;
+
 class Law
 {
 private:
@@ -437,17 +457,17 @@ public:
 
 			for (int p = 0; p < generations; p++) {
 				gen_layes.push_back(layes);
-			}//Ñîçäàíèå êîïèé
+			}
 
 			for (int p = 0; p < generations; p++) {
 				for (int k = 0; k < count_layes; k++) {
 					gen_layes[p][k].correct_weights(0.1);
 				}
-			}//Ñîçäàíèå ìóòàöèé â êîïèÿõ
+			}
 
 			for (int k = 0; k < generations; k++) {
 				val_error.push_back(find_error(input_local, answears, gen_layes[k], layes[count_layes - 1].get_neurons(), false));
-			}//Òåñòèðîâàíèå êîïèé è íàõîæäåíèå îøèáêè ó íèõ
+			}
 
 			float min_error;
 			if (-val_error[0] > val_error[0]) {
@@ -455,7 +475,7 @@ public:
 			}
 			else {
 				min_error = val_error[0];
-			}//Çà ìèíèìàëüíóþ îøèáêó ïî óìîë÷àíèþ áåð¸òñÿ ïåðâîå çíà÷åíèå â âåêòîðå
+			}
 
 			int index = 0;
 			for (int p = 1; p < generations; p++) {
@@ -463,9 +483,9 @@ public:
 					min_error = val_error[p];
 					index = p;
 				}
-			}//Íàõîæäåíèå ëó÷øåé êîïèè
+			}
 
-			float current_error = find_error(input_local, answears, layes, layes[count_layes - 1].get_neurons(), false);//Òåñòèðîâàíèå îñíîâíîé ìîäåëè è íàõîæäåíèå ó íå¸ îøèáêè
+			float current_error = find_error(input_local, answears, layes, layes[count_layes - 1].get_neurons(), false);
 
 			if (min_error < current_error) {
 				layes = gen_layes[index];
