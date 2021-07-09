@@ -7,7 +7,6 @@ LGPL-v2.1
 
     LayerFlow lib. Neural network library for creating, training and testing models.
                    Copyright © 2020 Dmitry Kalugin
-
     LayerFlow lib is free software; you can redistribute it and/or
     modify it under the terms of the GNU Lesser General Public
     License as published by the Free Software Foundation; either
