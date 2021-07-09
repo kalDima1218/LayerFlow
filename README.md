@@ -1,8 +1,6 @@
 # LayerFlow
 Neural network library wrote in C++
 ## License
-----
-
 LGPL-v2.1
 
     LayerFlow lib. Neural network library for creating, training and testing models.
